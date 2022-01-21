@@ -1,0 +1,85 @@
+$trackWidth: 12.5em; // (usually ignored)
+$trackHeight: .35em;
+$thumbDiameter: 1em;
+$trackColor: #ccc;
+$fillTrackColor: #263238;
+$thumbColor: #00cc80;
+
+@mixin track($fill: 0) {
+	box-sizing: border-box;
+	border: none;
+	width: $trackWidth; height: $trackHeight;
+	background: $trackColor;
+    border-radius: 50px;
+	
+	@if $fill == 1 {
+		.js & {
+			background: linear-gradient($fillTrackColor, $fillTrackColor)
+				0 / var(--sx) 100% no-repeat $trackColor;
+		}
+	}
+}
+
+@mixin fill() {
+	height: $trackHeight;
+	background: $fillTrackColor;
+}
+
+@mixin thumb($active: 0) {
+	box-sizing: border-box;
+	border: none;
+	border-radius: 50%;
+	background: $thumbColor;
+    width: 0;
+    height: 0;
+
+    @if $active == 1 {
+        width: $thumbDiameter;
+        height: $thumbDiameter;
+    }
+}
+
+[type='range'] {
+	&, &::-webkit-slider-thumb {
+		-webkit-appearance: none;
+	}
+	
+	--range: calc(var(--max) - var(--min));
+	--ratio: calc((var(--val) - var(--min))/var(--range));
+	//--sx: calc(.5*#{$thumbDiameter} + var(--ratio)*(100% - #{$thumbDiameter}));
+    --sx: calc(var(--ratio) * 100%);
+
+	margin: 0;
+	padding: 0;
+	width: $trackWidth; height: $thumbDiameter;
+	background: transparent;
+	font: 1em/1 arial, sans-serif;
+	
+	&::-webkit-slider-runnable-track {
+		@include track(1);
+	}
+	&::-moz-range-track { @include track; }
+	&::-ms-track { @include track; }
+	
+	&::-moz-range-progress { @include fill; }
+	&::-ms-fill-lower { @include fill; }
+	
+	&::-webkit-slider-thumb {
+		margin-top: .5*($trackHeight - $thumbDiameter);
+		@include thumb(0);
+	}
+	&::-moz-range-thumb { @include thumb(0); }
+	&::-ms-thumb {
+		margin-top: 0;
+		@include thumb(0);
+	}
+
+    &::-ms-tooltip { display: none; }
+
+    &.active {
+        &::-webkit-slider-thumb { @include thumb(1); }
+        &::-moz-range-thumb { @include thumb(1); }
+        &::-ms-thumb { @include thumb(1); }
+    }
+
+}

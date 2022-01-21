@@ -1,5 +1,12 @@
 <template>
-  <Tutorial/>
+  
+  <div>
+    <ul>
+      <li><nuxt-link to="/algorithms/DivideAndConquer">Divide and Conquer</nuxt-link></li>
+      <li><nuxt-link to="/algorithms/Knapsack">Knapsack</nuxt-link></li>
+    </ul>
+  </div>
+
 </template>
 
 <script lang="ts">
