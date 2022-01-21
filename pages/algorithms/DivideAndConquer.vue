@@ -224,8 +224,8 @@ export default Vue.extend({
         quickSort (list: number[]) {
             let diagString = "node [shape=record];\n";
 
-            let step = 1;
-            let steps = [];
+            let step = 0;
+            let steps: string[] = [];
 
             const quickSortF = (l: number[], id = 'a', idPar ="") => {
                 if (l.length == 0) return [];
@@ -296,7 +296,7 @@ export default Vue.extend({
         minMax (list: number[]) {
             let diagString = "node [shape=record];\n";
 
-            let step = 1;
+            let step = 0;
             let steps: string[] = [];
 
             const minmaxF = (l: number[], id = 'a', idPar = "") => {
