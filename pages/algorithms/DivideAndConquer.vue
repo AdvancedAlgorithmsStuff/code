@@ -410,7 +410,7 @@ export default Vue.extend({
                 }
 
                 step++;
-                diagString += `${id}r [label="{ {${l.join(' | ')} }|${inv + inv1 + inv2}}"];\n`
+                diagString += `${id}r [label="{ {${l.join(' | ')} }|${inv1}(L) + ${inv} + ${inv2}(R) = ${inv1 + inv + inv2}}"];\n`
                 diagString += `${id + "1"}r -> ${id}r [label="${step}"];\n`
                 diagString += `${id + "2"}r -> ${id}r [label="${step}"];\n`
                 steps.push(diagString);
