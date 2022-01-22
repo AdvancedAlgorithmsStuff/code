@@ -18,6 +18,7 @@
                         <option value="mergeSort">Merge Sort</option>
                         <option value="quickSort">QuickSort</option>
                         <option value="minMax">MinMax</option>
+                        <option value="countingInversions">Counting Inversions</option>
                     </select>
                 </p>
             </div>
@@ -127,6 +128,10 @@ export default Vue.extend({
 
                 case 'minMax': {
                     diagramSteps = (this as any).minMax(list);
+                    break;
+                }
+                case 'countingInversions': {
+                    diagramSteps = (this as any).countingInversions(list);
                     break;
                 }
 
@@ -340,7 +345,82 @@ export default Vue.extend({
             minmaxF([...list]);
 
             return steps;
-        }
+        },
+
+        countingInversions (list: number[]) {
+            let diagString = "node [shape=record];\n";
+
+            let step = 0;
+            let steps: string[] = [];
+
+            const countingInversionsF = (l: number[], id = 'a', idPar = ""): [number, number[]] => {
+                
+                if (l.length <= 1) {
+                    diagString += `${id}r [label="${l.join(' | ')}"];\n`
+                    if (idPar) diagString += `${idPar} -> ${id}r [label="${step}"]\n`
+                    steps.push(diagString);
+                    return [0, l];
+                }
+
+                diagString += `${id} [label="${l.join(' | ')}"];\n`
+                if (idPar) diagString += `${idPar} -> ${id} [label="${step}"]\n`
+                steps.push(diagString);
+
+                //Split the list
+                let mid = Math.floor(l.length / 2);
+                let l1 = l.slice(0, mid);
+                let l2 = l.slice(mid);
+
+                step++;
+                let [inv1, l1t] = countingInversionsF(l1, `${id}1`, id);
+                l1 = l1t;
+                step++;
+                let [inv2, l2t] = countingInversionsF(l2, `${id}2`, id);
+                l2 = l2t;
+
+                let i = 0;
+                let ic = l1.length;
+                let p1 = 0;
+                let p2 = 0;
+
+                let inv = 0;
+
+                while (p1 < l1.length || p2 < l2.length) {
+                    let n1 = null;
+                    let n2 = null;
+                    if (p1 < l1.length) n1 = l1[p1];
+                    if (p2 < l2.length) n2 = l2[p2];
+
+                    if (n1 == null) {
+                        (l as any)[i] = n2;
+                        p2++;
+                    } else if (n2 == null) {
+                        l[i] = n1;
+                        p1++;
+                    } else if (n2 > n1) {
+                        l[i] = n1;
+                        ic--;
+                        p1++;
+                    } else {
+                        l[i] = n2;
+                        inv += ic;
+                        p2++;
+                    }
+                    i++;
+                }
+
+                step++;
+                diagString += `${id}r [label="{ {${l.join(' | ')} }|${inv + inv1 + inv2}}"];\n`
+                diagString += `${id + "1"}r -> ${id}r [label="${step}"];\n`
+                diagString += `${id + "2"}r -> ${id}r [label="${step}"];\n`
+                steps.push(diagString);
+                
+                return [inv + inv1 + inv2, l];
+            }
+
+            countingInversionsF([...list]);
+            return steps;
+        },
 
     }
 });
