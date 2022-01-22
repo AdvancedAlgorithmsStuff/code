@@ -297,7 +297,7 @@ export default Vue.extend({
             this.isPlaying = false;
         },
 
-        step (delta) {
+        step (delta: number) {
             if (this.isPlaying) this.stopPlayback();
             this.nextStep(delta);
         },

@@ -128,7 +128,7 @@ export default Vue.extend({
         async renderCurrentStep (step: number) {
             this.calculate();
             if (this.steps[step])
-                await this.$renderDiagram(this.steps[step], {
+                await (this as any).$renderDiagram(this.steps[step], {
                     parentElement: this.$refs.diagram,
                     replaceContents: true
                 });
@@ -330,7 +330,7 @@ export default Vue.extend({
                 s.stepNoT('li', 'li', "-1");
             }
 
-            steps.push(`node [shape=record]\n${createVar('a', 'Result Items', `{${itemsResult.map(a => `Item: ${a + 1}`)}}`)}`)
+            steps.push(`node [shape=record]\n${createVar('a', 'Result Items', `{${itemsResult.map(a => `Item: ${a + 1}`)}}`)}\n${createVar('b', 'Max Value', m[this.itemList.length][this.maxWeight])}`)
             //steps.push(createVar('a', 'Result Value', `{${itemsResult.map(a => `Item: ${a}`)}}`))
 
             this.steps = steps;

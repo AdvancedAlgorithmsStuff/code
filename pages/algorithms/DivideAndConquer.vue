@@ -30,15 +30,17 @@
                 <center>
                     <PlaybackControls :max="maxPlaybackStep" @playbackProgress="renderDiagramStep" />
                 </center>
-                <br><br>
-                <auto-size>
-                    <div ref="diagram" />
-                </auto-size>
             </div>
             <div v-else>
                 <pre>Please enter some values!</pre>
             </div>
         </transition>
+
+        <div v-if="maxPlaybackStep > 0">
+            <center>
+                    <div ref="diagram" />
+            </center>
+        </div>
 
     </div>
 
@@ -58,30 +60,30 @@ export default Vue.extend({
         algorithm: 'mergeSort',
         rawList: '1,2,3,4,5,6',
 
-        playbackSteps: undefined
+        playbackSteps: undefined as undefined | string[]
     }),
 
     computed: {
         /**
-         * Combine algorithm and list to allow watching both with a watcher.
-         */
-        algorithmAndList () {
-            return { algorithm: this.algorithm, list: this.list }
-        },
-
-        /**
          * The sanitized list.
          */
-        list () {
+        list () : number[] {
             return this.rawList.split(',')
                 .filter(entry => entry.trim().length > 0)
                 .map(entry => Number(entry.trim()))
                 .filter(entry => !isNaN(entry));
         },
 
+        /**
+         * Combine algorithm and list to allow watching both with a watcher.
+         */
+        algorithmAndList () : any {
+            return { algorithm: this.algorithm, list: (this as any).list }
+        },
+
         maxPlaybackStep () {
             if (!this.playbackSteps) return 0;
-            return this.playbackSteps.length - 1;
+            return this.playbackSteps!.length - 1;
         }
     },
 
@@ -91,43 +93,45 @@ export default Vue.extend({
          * to re-render the graph.
          */
         algorithmAndList () {
-            this.renderAlgorithm();
+            (this as any).renderAlgorithm();
         }
     },
 
     mounted () {
         this.$nextTick(() => {
-            this.renderAlgorithm();
+            (this as any).renderAlgorithm();
         });
     },
 
     methods: {
 
-        async renderAlgorithm() {
+        async renderAlgorithm() : Promise<void> {
             this.playbackSteps = undefined;
-            if (this.list.length < 1) return;
+            let list = (this as any).list;
+
+            if (list.length < 1) return;
 
             let diagramSteps;
             let diagram;
 
             switch (this.algorithm) {
                 case 'mergeSort': {
-                    diagramSteps = this.mergeSort(this.list);
+                    diagramSteps = (this as any).mergeSort(list);
                     break;
                 }
                 
                 case 'quickSort': {
-                    diagramSteps = this.quickSort(this.list);
+                    diagramSteps = (this as any).quickSort(list);
                     break;
                 }
 
                 case 'minMax': {
-                    diagramSteps = this.minMax(this.list);
+                    diagramSteps = (this as any).minMax(list);
                     break;
                 }
 
                 default: {
-                    this.$renderText(`Unspecified algorithm: ${this.algorithm}`, {
+                    (this as any).$renderText(`Unspecified algorithm: ${this.algorithm}`, {
                         parentElement: this.$refs.diagram,
                         replaceContents: true
                     });
@@ -136,7 +140,7 @@ export default Vue.extend({
             }
 
             if (!diagramSteps) {
-                await this.$renderDiagram(diagram, {
+                await (this as any).$renderDiagram(diagram, {
                     parentElement: this.$refs.diagram,
                     replaceContents: true
                 });
@@ -144,11 +148,11 @@ export default Vue.extend({
             }
 
             this.playbackSteps = diagramSteps;
-            await this.renderDiagramStep(this.maxPlaybackStep);
+            await (this as any).renderDiagramStep((this as any).maxPlaybackStep);
         },
 
-        async renderDiagramStep (step) {
-            await this.$renderDiagram(this.playbackSteps[step], {
+        async renderDiagramStep (step: number) {
+            await (this as any).$renderDiagram((this as any).playbackSteps[step], {
                 parentElement: this.$refs.diagram,
                 replaceContents: true
             });
@@ -160,7 +164,7 @@ export default Vue.extend({
             let steps: string[] = [];
 
             let step = 0;
-            const mergeSortF = (l: number[], id = 'a', idPar: string | null = null) => {
+            const mergeSortF = (l: number[], id = 'a', idPar?: string) => {
                 if (l.length <= 1) {
                     diagString += `${id}r [label="${l.join(' | ')}"];\n`
                     if (idPar) diagString += `${idPar} -> ${id}r [label="${step}"]\n`
@@ -193,7 +197,7 @@ export default Vue.extend({
                     if (p2 < l2.length) n2 = l2[p2];
 
                     if (n1 == null) {
-                        l[i] = n2;
+                        (l as any)[i] = n2;
                         p2++;
                     } else if (n2 == null) {
                         l[i] = n1;
