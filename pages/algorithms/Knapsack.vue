@@ -235,19 +235,39 @@ export default Vue.extend({
                     }
                 }
             }
-
+            let s = getDiagString();
             let solveOpt = (index: number, weight: number) => {
                 if (index == 0) return 0;
 
                 let r = m[index][weight];
+                s = getDiagString();
 
                 if (r == 0) {
+                    s.step([index, weight], [index, weight], 'It\'s calculate it\'s value');
                     let i = this.itemList[index - 1]
 
+                    s = getDiagString(index - 1);
+                    s.updateTemp(createVar('w', 'Weight', weight));
+                    s.stepNoT("item:w", "w", 'Check if it\'s bigger!');
                     if (i[1] > weight) {
-                        r = solveOpt(index - 1, weight);
+                        s.step([index, weight], [index - 1, weight], 'Calculate the best value that fit\'s in the bag');
+                        r = solveOpt(index - 1, weight); 
+                        s.step([index - 1, weight], [index, weight], 'Set as the optimal value');
                     } else {
-                        r = Math.max(solveOpt(index - 1, weight), i[0] + solveOpt(index-1, weight - i[1] ));
+                        
+                        s.stepNoTs([`table:t${weight}${index}`, `item:w`], [`table:t${weight-i[1]}${index-1}`, `table:t${weight-i[1]}${index-1}`], ['It\'s calculate it\'s value', 'Based on it\'s weight']);
+                        let v1 = solveOpt(index-1, weight - i[1]);
+                        s = getDiagString(index - 1);
+                        s.updateTemp(createVar('sum', 'Sum', i[0] + v1));
+                        s.stepNoTs(['item:v', `table:t${weight - i[1]}${index-1}`], ['sum', 'sum'], ['Sum', 'Sum']);
+                        s.step([index,weight], [index-1,weight], 'It\'s calculate it\'s value');
+                        let v2 = solveOpt(index-1, weight);
+                        s = getDiagString(index - 1);
+                        s.updateTemp(createVar('sum', 'Sum', i[0] + v1));
+                        r = Math.max(v2, i[0] + v1);
+                        s.updateTemp(createVar('max', 'Max', r));
+                        s.stepNoTs(['sum', `table:t${weight}${index-1}`], ['max', 'max'], ['Max', 'Max']);
+                        s.stepS(false, [index, weight], 'max', 'Set Value');
                     }
 
                 }
@@ -264,7 +284,7 @@ export default Vue.extend({
                 solveOpt(this.itemList.length, this.maxWeight);
 
             this.chapter1Length = steps.length;
-            let s = getDiagString(); 
+            s = getDiagString(); 
             let lookIndex = this.itemList.length;
             let lookWeight = this.maxWeight;
 
