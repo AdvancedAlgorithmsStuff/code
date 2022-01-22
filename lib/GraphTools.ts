@@ -9,13 +9,15 @@ export const stepBuilderBuilder = (steps: string[], nodeNames: string[]) => {
       ignoreZero,
       prefix,
       middle,
-      extra: extraProp
+      extra: extraProp,
+      rankdir
     }: {
       baseStringProp?: string;
       ignoreZero?: boolean;
       prefix?: string;
       middle?: string;
       extra?: StringIndexed<any>
+      rankdir?: string
     }
   ) => {
     let list: string[] = [];
@@ -53,11 +55,26 @@ export const stepBuilderBuilder = (steps: string[], nodeNames: string[]) => {
       return `${origin} -> ${destination} [${attr.join(",")}]`;
     };
 
-    let updateBaseString = (graph: StringIndexed<number>) =>
-      (baseString =
+    let recalculate = () => {
+      calculated =
+        baseString +
+        "\n" +
+        list.join("\n") +
+        "\n" +
+        Object.keys(vars)
+          .map((a) => createVarF(a, vars[a][0], vars[a][1]))
+          .join("\n") +
+        "\n" +
+        (title ? `labelloc="t";\nlabel="${title}";` : "");
+    };
+
+    let updateBaseString = (graph: StringIndexed<number>) => {
+      baseString =
         baseStringDef +
         (baseStringProp ? baseStringProp + "\n" : "") +
+        `${rankdir ? `rankdir=${rankdir};` : ''}\n` +
         nodeNames.map((a) => `${prefix ?? ''}${a} [label="${a}${extra[a] ? `:${extra[a]}` : ''}"]`).join("\n") +
+        //"}" +
         Object.keys(graph)
           .map((a) => {
             let s = a.split("-");
@@ -77,10 +94,13 @@ export const stepBuilderBuilder = (steps: string[], nodeNames: string[]) => {
                   color: colors[`${a.o}_${a.d}`] ?? color,
                 })
           )
-          .join("\n"));
+          .join("\n") +
+          ""
+          ;
+          recalculate();
+    }
 
     updateBaseString(graph);
-
 
     let calculated = baseString;
 
@@ -124,19 +144,6 @@ export const stepBuilderBuilder = (steps: string[], nodeNames: string[]) => {
       return `${nName} [shape=record, label="{${name}|${value}}"]`;
     };
 
-    let recalculate = () => {
-      calculated =
-        baseString +
-        "\n" +
-        list.join("\n") +
-        "\n" +
-        Object.keys(vars)
-          .map((a) => createVarF(a, vars[a][0], vars[a][1]))
-          .join("\n") +
-        "\n" +
-        (title ? `labelloc="t";\nlabel="${title}";` : "");
-    };
-
     let arrayToList = (s: string[]) => `${s.join("|")}`;
     let dicToList = (s: StringIndexed) =>
       `${Object.keys(s)
@@ -164,8 +171,20 @@ export const stepBuilderBuilder = (steps: string[], nodeNames: string[]) => {
       );
     };
 
+    let dropVars = () => {
+      vars = {};
+      recalculate();
+    }
+
+    let mapColors = (fn: (t: StringIndexed) => StringIndexed) => {
+      colors = fn(colors);
+      updateBaseString(graph);
+    }
+
     return {
       baseString,
+      mapColors,
+      dropVars,
       stepAction,
       arrayToList,
       updateBaseString,

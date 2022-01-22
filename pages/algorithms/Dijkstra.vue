@@ -34,6 +34,7 @@
             <div v-else>
                 <PlaybackControls :max="this.steps.length - 1" @playbackProgress="this.renderDiagramStep" />
                 <div ref="diagram" />
+                <div ref="end" />
             </div>
         </transition>
     </div>
@@ -90,11 +91,14 @@ export default Vue.extend({
     },
     methods: {
         async renderDiagramStep(step: number) {
-            if (this.steps[step])
+            if (this.steps[step]) {
                 await (this as any).$renderDiagram(this.steps[step], {
                     parentElement: this.$refs.diagram,
                     replaceContents: true
                 });
+                (this as any).$refs.end.scrollIntoView();
+                console.log((this as any).$refs.end.scrollTo);
+            }
         },
         addItem() {
             this.itemListRaw.push({origin: '', destination: '', capacity: '0'});
@@ -138,7 +142,7 @@ export default Vue.extend({
             nodeNames.sort();
 
             let nodeValues: StringIndexed<number> = {};
-            nodeNames.forEach(a => nodeValues[a] = Number.MAX_VALUE);
+            nodeNames.forEach(a => nodeValues[a] = Number.POSITIVE_INFINITY);
             nodeValues['s'] = 0;
 
             let steps: string[] = [];
@@ -153,18 +157,23 @@ export default Vue.extend({
                 graph[`${item.origin}-${item.destination}`] = item.capacity;
             }
 
-            let s =  stepBuilder(graph, 'black', {extra: nodeValues});
+            let s =  stepBuilder(graph, 'black', {extra: nodeValues, rankdir: 'LR'});
             s.updateTitle('Origin graph');
 
             let current = 's';
             let selected = ['s'];
             let options: Set<[string , string]> = new Set();
+            let optionsStr: Set<string> = new Set();
             s.createVar('_current', 'Current', 's');
             s.createVar('_selected', 'Selected', 's');
             s.createVar('_options', 'Options', '');
             s.stepNothing();
+
+            s.updateTitle("Find the values")
             while (true) {
                 
+                s.stepAction(`Add the possible values form ${current}`)
+
                 //Set colors
                 for (let d of originGraph[current]) {
                     if (!selected.includes(d)) {
@@ -179,15 +188,19 @@ export default Vue.extend({
                 s.stepNothing();
 
                 while (true) {
+                    s.stepAction('Check the next best connection');
                     let [b, ...a1] = a;
                     a = a1;
+                    s.setVar('_options', s.arrayToList(a.map(a => `${a[0]} to ${a[1]}`)));
                     s.setColor(`${b[0]}_${b[1]}`, 'green');
+                    s.stepAction(`Using ${b[0]} to ${b[1]}`);
+                    optionsStr.add(`${b[0]}-${b[1]}`);
 
                     if (nodeValues[b[0]] + graph[`${b[0]}-${b[1]}`] <  nodeValues[b[1]]) {
                         nodeValues[b[1]] = nodeValues[b[0]] + graph[`${b[0]}-${b[1]}`]
+                        s.updateExtra(nodeValues);
+                        s.stepAction('Update value')
                     }
-                    s.updateExtra(nodeValues);
-                    s.stepAction('Update value')
 
                     if (selected.includes(b[1])) {
                         if (a.length == 0) {
@@ -201,13 +214,15 @@ export default Vue.extend({
                         selected.push(b[1]);
                         current = b[1];
                         s.setVar('_selected', s.arrayToList(selected))
-                        s.addToList(s.createArrow('_options', '_current', {label: `Set ${current} as current`}), true);
+                        s.setVar('_current', current)
+                        s.addToList(s.createArrow('_options', '_current', {label: `Set ${current} as current`}));
                         s.addToList(s.createArrow('_options', '_selected', {label: `Add ${current} to selected`}), true);
                         s.popList();
                         s.popList();
                         break
                     }
                 }
+                options = new Set(a);
 
                 if (current == 't') {
                     s.stepAction('Solution found!');
@@ -215,63 +230,48 @@ export default Vue.extend({
                 }
             }
 
+            s.dropVars();
+            s.setVar('_current', 't');
+            s.stepAction("Find the shortest path");
 
+            let currentt = "t";
             current = "t";
+            s.updateTitle("Find the shortest path")
             while (true) {
 
                 if (current == "s") break;
                 
                 //Set colors
+                loop1:
                 for (let d of depGraph[current]) {
                     if (selected.includes(d)) {
-                        s.setColor(`${current}_${d}`, 'red');
-                        options.add([current, d]);
+                        //s.setColor(`${d}_${current}`, 'red');
+                        if (optionsStr.has(`${d}-${current}`))
+                            if (nodeValues[current] - graph[`${d}-${current}`] == nodeValues[d]) {
+                                s.setColor(`${d}_${current}`, 'blue');
+                                current = d;
+                                s.setVar('_current', current);
+                                s.stepNothing();
+                                break loop1;
+                            }
                     }
                 }
-                let a = Array.from(options);
-                a.sort((a, b) => graph[`${a[0]}-${a[1]}`] - graph[`${b[0]}-${b[1]}`]);
-                
-                s.setVar('_options', s.arrayToList(a.map(a => `${a[0]} to ${a[1]}`)));
-                s.stepNothing();
-
-                while (true) {
-                    let [b, ...a1] = a;
-                    a = a1;
-                    s.setColor(`${b[0]}_${b[1]}`, 'green');
-
-                    if (nodeValues[b[0]] + graph[`${b[0]}-${b[1]}`] <  nodeValues[b[1]]) {
-                        nodeValues[b[1]] = nodeValues[b[0]] + graph[`${b[0]}-${b[1]}`]
-                    }
-                    s.updateExtra(nodeValues);
-                    s.stepAction('Update value')
-
-                    if (selected.includes(b[1])) {
-                        if (a.length == 0) {
-                            s.stepAction('No Solution found');
-                            this.steps = steps;
-                            return;
-                        } else {
-                            s.stepAction('Continue checking');
-                        }
-                    } else {
-                        selected.push(b[1]);
-                        current = b[1];
-                        s.setVar('_selected', s.arrayToList(selected))
-                        s.addToList(s.createArrow('_options', '_current', {label: `Set ${current} as current`}), true);
-                        s.addToList(s.createArrow('_options', '_selected', {label: `Add ${current} to selected`}), true);
-                        s.popList();
-                        s.popList();
-                        break
-                    }
-                }
-
-                if (current == 't') {
-                    s.stepAction('Solution found!');
+                if (current == currentt) {
+                    s.stepAction("Something went wrong");
                     break;
                 }
+                currentt = current;
             }
 
-
+            s.updateTitle("Solution");
+            s.dropVars();
+            s.stepNothing();
+            s.mapColors((colors) => {
+                let cs: StringIndexed = {};
+                Object.keys(colors).filter(c => colors[c] == 'blue').forEach(c => cs[c] = 'blue');
+                return cs;
+            });
+            s.stepNothing();
 
             this.steps = steps;
         }
