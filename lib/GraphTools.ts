@@ -1,6 +1,42 @@
 export type StringIndexed<T = string> = { [key: string]: T };
 
 export const stepBuilderBuilder = (steps: string[], nodeNames: string[]) => {
+  interface StepBuilderResult {
+      linkGraph: (name: string, g: StepBuilderResult) => void,
+      removeLinkGraph: (name: string) => void,
+      updateGraph: (g: StringIndexed<number>) => void,
+      getBaseString: () => string,
+      addMiddle: (s: string) => void,
+      removeMiddle: (s: string) => void,
+      mapColors: (fn: (s: StringIndexed) => StringIndexed) => void,
+      dropVars: () => void,
+      stepAction: (s: string) => void,
+      arrayToList: (s: any[]) => string,
+      updateBaseString: () => void,
+      getCalculated: () => string,
+      stepNothing: () => void,
+      addToList: (s: string, b?: boolean) => void,
+      popList: (b?: boolean) => void,
+      createArrow: (
+      origin: string,
+      destination: string,
+      { label, color }: { label?: string; color?: string; shape?: string }
+      ) => string,
+      removeVar: (s: string) => void,
+      setVar: (s: string, v: any) => void,
+      updateTitle: (s: string) => void,
+      createVar: (nName: string, name: string, v:any) => void,
+      createMiddleArrow: (
+      center: string,
+      origin: string,
+      destination: string,
+      { label, color }: { label?: string; color?: string; shape?: string }
+      ) => string,
+      dicToList: (d: StringIndexed) => string,
+      setColor: (n: string, c: string) => void,
+      deleteColor: (n: string) => void,
+      updateExtra: (d: StringIndexed<number>) => void,
+  }
   let stepBuilder = (
     graph: StringIndexed<number>,
     color: string,
@@ -10,16 +46,18 @@ export const stepBuilderBuilder = (steps: string[], nodeNames: string[]) => {
       prefix,
       middle,
       extra: extraProp,
+      allMiddle,
       rankdir
     }: {
       baseStringProp?: string;
       ignoreZero?: boolean;
       prefix?: string;
       middle?: string;
+      allMiddle?: boolean;
       extra?: StringIndexed<any>
       rankdir?: string
     }
-  ) => {
+  ): StepBuilderResult => {
     let list: string[] = [];
     let vars: { [key: string]: [string, any] } = {};
     let title: string | null = null;
@@ -27,6 +65,9 @@ export const stepBuilderBuilder = (steps: string[], nodeNames: string[]) => {
     let baseStringDef = "rank=LR; constraint=false;\n";
     let baseString = "rank=LR; constraint=false;\n";
     let extra: StringIndexed<any> = extraProp ?? {};
+    let dynamicMiddle: string[] = [];
+    let pGraph = graph;
+    let linkedGraphs: StringIndexed<StepBuilderResult> = {};
 
     let createMiddleArrow = (
       center: string,
@@ -65,24 +106,25 @@ export const stepBuilderBuilder = (steps: string[], nodeNames: string[]) => {
           .map((a) => createVarF(a, vars[a][0], vars[a][1]))
           .join("\n") +
         "\n" +
+        Object.keys(linkedGraphs).map( a => linkedGraphs[a].getCalculated()).join('\n') + "\n" + 
         (title ? `labelloc="t";\nlabel="${title}";` : "");
     };
 
-    let updateBaseString = (graph: StringIndexed<number>) => {
+    let updateBaseString = () => {
       baseString =
         baseStringDef +
         (baseStringProp ? baseStringProp + "\n" : "") +
         `${rankdir ? `rankdir=${rankdir};` : ''}\n` +
         nodeNames.map((a) => `${prefix ?? ''}${a} [label="${a}${extra[a] ? `:${extra[a]}` : ''}"]`).join("\n") +
         //"}" +
-        Object.keys(graph)
+        Object.keys(pGraph)
           .map((a) => {
             let s = a.split("-");
-            return { o: s[0], d: s[1], cap: graph[a] };
+            return { o: s[0], d: s[1], cap: pGraph[a] };
           })
           .filter((a) => !(ignoreZero && a.cap == 0))
           .map((a) =>
-            middle
+            allMiddle || dynamicMiddle.includes(`${a.o}_${a.d}`)
               ? createMiddleArrow(
                   `${middle}_${a.o}_${a.d}`,
                   `${prefix ?? ""}${a.o}`,
@@ -100,7 +142,7 @@ export const stepBuilderBuilder = (steps: string[], nodeNames: string[]) => {
           recalculate();
     }
 
-    updateBaseString(graph);
+    updateBaseString();
 
     let calculated = baseString;
 
@@ -110,7 +152,7 @@ export const stepBuilderBuilder = (steps: string[], nodeNames: string[]) => {
 
     let updateExtra = (extraProp: StringIndexed<any>) => {
         extra = extraProp;
-        updateBaseString(graph);
+        updateBaseString();
     }
 
     let addToList = (l: string, step?: boolean) => {
@@ -157,12 +199,12 @@ export const stepBuilderBuilder = (steps: string[], nodeNames: string[]) => {
 
     let setColor = (t: string, color: string) => {
         colors[t] = color;
-        updateBaseString(graph);
+        updateBaseString();
     }
 
     let deleteColor = (t: string) => {
         delete colors[t];
-        updateBaseString(graph);
+        updateBaseString();
     }
 
     let stepAction = (action: string) => {
@@ -178,11 +220,43 @@ export const stepBuilderBuilder = (steps: string[], nodeNames: string[]) => {
 
     let mapColors = (fn: (t: StringIndexed) => StringIndexed) => {
       colors = fn(colors);
-      updateBaseString(graph);
+      updateBaseString();
+    }
+
+    let addMiddle = (s: string) => {
+      dynamicMiddle.push(s);
+      updateBaseString();
+    }
+
+    let removeMiddle = (s: string) => {
+      dynamicMiddle = dynamicMiddle.filter(a => a != s);
+      updateBaseString();
+    }
+
+    let updateGraph = (graph: StringIndexed<number>) => {
+      pGraph = graph;
+      updateBaseString();
+    }
+
+    let getBaseString = () => baseString;
+
+    let linkGraph =  (name: string, graphF: StepBuilderResult) => {
+      linkedGraphs[name] = graphF;
+      recalculate();
+    }
+
+    let removeLinkGraph =  (name: string) => {
+      delete linkedGraphs[name];
+      recalculate();
     }
 
     return {
-      baseString,
+      linkGraph,
+      removeLinkGraph,
+      updateGraph,
+      getBaseString,
+      addMiddle,
+      removeMiddle,
       mapColors,
       dropVars,
       stepAction,

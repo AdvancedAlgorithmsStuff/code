@@ -111,6 +111,7 @@ export default Vue.extend({
 
             let stepBuilder = stepBuilderBuilder(steps, nodeNames);
 
+
             // Create a residual graph and fill the residual graph 
             // with given capacities in the original graph as 
             // residual capacities in residual graph 
@@ -123,14 +124,12 @@ export default Vue.extend({
                 graph[`${item.origin}-${item.destination}`] = item.capacity;
             }
 
-            let base = stepBuilder(graph, 'GREY', {middle: 'gm'});
-            let residual = stepBuilder(residualGraph, 'RED', {middle: 'rm'});
-            let flow = stepBuilder(flowGraph, 'green', {middle: 'fm'});
+            let base = stepBuilder(graph, 'GREY', {middle: 'g'});
+            let residual = stepBuilder(residualGraph, 'RED', {middle: 'g'});
+            let flow = stepBuilder(residualGraph, 'RED', {middle: 'g'});
             let s = base;
             s.updateTitle('Default graph');
             s.stepNothing();
-            s.linkGraph('residual', residual);
-            s.linkGraph('flow', flow);
 
             let search = (): [boolean, StringIndexed] => {
                 s.updateTitle('Currently Searching');
@@ -142,6 +141,7 @@ export default Vue.extend({
                 s.createVar('_q', 'Queue', 's');
                 s.createVar('_v', 'Visited', 's');
                 s.createVar('_parent', 'Parent', '');
+                s.addToList(stepBuilder(residualGraph, 'RED', {prefix: 're_', middle: 'rem'}).baseString);
 
                 // Standard BFS Loop  
                 s.stepAction('Check if the Queue is not empty');
@@ -155,10 +155,8 @@ export default Vue.extend({
                     for (let item of nodeNames) { 
                         s.createVar('_item', 'Item', item);
                         s.addToList(s.createArrow(nName, item, {label: 'Searching'}));
-                        if (residualGraph[`${nName}-${item}`]) {
-                            residual.addMiddle(`${nName}_${item}`);
-                            s.addToList(s.createArrow(nName, `rm_${nName}_${item}`, {label: "Check if > 0"}))
-                        }
+                        if (residualGraph[`${nName}-${item}`]) 
+                            s.addToList(s.createArrow(nName, `rem_${nName}_${item}`, {label: "Check if > 0"}))
                         s.addToList(s.createArrow(item, '_v', {label: "Check if visited"}), true)
                         if (residualGraph[`${nName}-${item}`] > 0 && !visited.has(item)) { 
                             q.push(item); 
@@ -169,10 +167,8 @@ export default Vue.extend({
                             s.setVar('_parent', s.dicToList(parent));
                         } 
                         s.popList();
-                        if (residualGraph[`${nName}-${item}`]) {
+                        if (residualGraph[`${nName}-${item}`])
                             s.popList();
-                            residual.removeMiddle(`${nName}_${item}`);
-                        }
                         s.popList(true);
                     } 
                     s.removeVar('_item');
@@ -194,8 +190,6 @@ export default Vue.extend({
 
                 let max_flow = 0;
 
-                s.createVar('_mxFlow', 'Max Flow', max_flow);
-
                 let [b, parent] = search();
                 s.updateTitle('Current step: Ford Fulkerson');
 
@@ -216,92 +210,79 @@ export default Vue.extend({
                     s.stepAction('Update residual graph');
              		for (v='t'; v!='s'; v=parent[v]) { 
              			u = parent[v]; 
+
+                        s.addToList(stepBuilder(flowGraph, 'GREEN', {middle: 'fg'}).baseString);
+                        s.addToList(stepBuilder(residualGraph, 'RED', {middle: 'rg'}).baseString);
              			// update residual graph capacities of the edges and reverse edges along the path 
                         
                         s.createVar('_temp', 'Temp', (graph[`${u}-${v}`] ?? 0) - (flowGraph[`${u}-${v}`] ?? 0));
-                        if (graph[`${u}-${v}`]) {
-                            s.addMiddle(`${u}_${v}`)
-                            s.addToList(s.createArrow(`gm_${u}_${v}`, '_temp', {label: '+'}));
-                        }
-                        if (flowGraph[`${u}-${v}`]) {
-                            flow.addMiddle(`${u}_${v}`)
-                            s.addToList(s.createArrow(`fm_${u}_${v}`, '_temp', {label: '-'}));
-                        }
-                        residual.addMiddle(`${u}_${v}`)
-                        s.addToList(s.createArrow('_temp', `rm_${u}_${v}`, {}), true);
+                        if (graph[`${u}-${v}`])
+                            s.addToList(s.createArrow(`g_${u}_${v}`, '_temp', {label: '+'}));
+                        if (flowGraph[`${u}-${v}`])
+                            s.addToList(s.createArrow(`fg_${u}_${v}`, '_temp', {label: '-'}));
+                        s.addToList(s.createArrow('_temp', `rg_${u}_${v}`, {}), true);
              			residualGraph[`${u}-${v}`] = (graph[`${u}-${v}`] ?? 0) - (flowGraph[`${u}-${v}`] ?? 0); // forward edge
              			residualGraph[`${v}-${u}`] = flowGraph[`${u}-${v}`] ?? 0; 			// forward edge
-                        residual.removeMiddle(`${u}_${v}`)
-                        if (graph[`${u}-${v}`]) {
+                        if (graph[`${u}-${v}`])
                             s.popList();
-                            s.removeMiddle(`${u}_${v}`)
-                        }
-                        if (flowGraph[`${u}-${v}`]) {
+                        if (flowGraph[`${u}-${v}`])
                             s.popList();
-                            flow.removeMiddle(`${u}_${v}`)
-                        }
+                        s.popList();
+                        s.popList();
                         s.popList();
                         s.removeVar('_temp')
 
-                        residual.updateGraph(residualGraph);
-                        flow.updateGraph(flowGraph);
+                        s.addToList(stepBuilder(residualGraph, 'RED', {middle: 'rg'}).baseString, true);
+                        s.addToList(stepBuilder(flowGraph, 'GREEN', {middle: 'fg'}).baseString, true);
                         if (flowGraph[`${u}-${v}`]) {
-                            residual.addMiddle(`${v}_${u}`)
-                            flow.addMiddle(`${u}_${v}`)
-                            s.addToList(s.createArrow(`fm_${u}_${v}`, `rm_${v}_${u}`, {}), true);
-                            residual.removeMiddle(`${v}_${u}`)
-                            flow.removeMiddle(`${u}_${v}`)
+                            s.addToList(s.createArrow(`fg_${u}_${v}`, `rg_${v}_${u}`, {}), true);
                         } else {
                             s.createVar('_temp', 'Temp', 0);
-                            residual.addMiddle(`${u}_${v}`)
-                            s.addToList(s.createArrow('_temp', `rm_${u}_${v}`, {}), true);
-                            residual.removeMiddle(`${v}_${u}`)
+                            s.addToList(s.createArrow('_temp', `rf_${u}_${v}`, {}), true);
                         }
                         s.popList();
                         s.removeVar('_temp');
 
                         s.addToList(s.createArrow('_bt', '_bt', {label: 'min'}));
-                        residual.addMiddle(`${u}_${v}`)
-                        s.addToList(s.createArrow(`rm_${u}_${v}`, '_bt', {label: 'min'}), true);
-                        residual.removeMiddle(`${v}_${u}`)
+                        s.addToList(s.createArrow(`rg_${u}_${v}`, '_bt', {label: 'min'}), true);
 
              			bottleneck = Math.min(bottleneck, residualGraph[`${u}-${v}`]); 	// find bottleneck, edge with minimum residual capacity across the edges of the path
 
                         s.setVar('_bt', bottleneck);
                         s.popList();
                         s.popList(true);
+
+                        s.popList();
+                        s.popList();
              		}
                      
                     s.stepAction('Update Flow graph')
              		// update flow based on calculated bottleneck and residual graph from the previous loop 
              		for (v='t'; v != 's'; v=parent[v]) { 
-                        //s.addToList(stepBuilder(flowGraph, 'GREEN', {middle: 'fg'}).baseString);
+                        s.addToList(stepBuilder(flowGraph, 'GREEN', {middle: 'fg'}).baseString);
              			u = parent[v]; 
 
-                        s.addMiddle(`${u}_${v}`)
-                        s.addToList(s.createArrow(u, `gm_${u}_${v}`, {label: 'Check if > 0'}), true);
-                        s.removeMiddle(`${u}_${v}`)
+                        s.addToList(s.createArrow(u, `g_${u}_${v}`, {label: 'Check if > 0'}), true);
                         s.popList();
 
 
                         let st = "";
-                        flow.addMiddle(`${u}_${v}`)
              			if (graph[`${u}-${v}`] > 0) {
              				flowGraph[`${u}-${v}`] = (flowGraph[`${u}-${v}`] ?? 0) + bottleneck; 
-                            st = s.createArrow('_bt', `fm_${u}_${v}`, {label: '+'});
+                            st = s.createArrow('_bt', `fg_${u}_${v}`, {label: '+'});
                         } else {
              				flowGraph[`${u}-${v}`] = (flowGraph[`${u}-${v}`] ?? 0) - bottleneck;
-                            st = s.createArrow('_bt', `fm_${u}_${v}`, {label: '-'});
+                            st = s.createArrow('_bt', `fg_${u}_${v}`, {label: '-'});
                         }											// backward edge
 
-                        flow.updateGraph(flowGraph);
+                        s.popList();
+                        s.addToList(stepBuilder(flowGraph, 'GREEN', {middle: 'fg'}).baseString);
                         s.addToList(st, true);
-                        flow.removeMiddle(`${u}_${v}`)
+                        s.popList()
                         s.popList();
              		} 
 
                     max_flow += bottleneck;
-                    s.setVar('_mxFlow', max_flow);
                     
                     [b, parent] = search();
                     
@@ -314,11 +295,9 @@ export default Vue.extend({
 
             fordFulkerson();
 
-            //s = stepBuilder(flowGraph, 'green', {});
-            s.removeLinkGraph('residual');
+            s = stepBuilder(flowGraph, 'green', {});
             s.updateTitle('Result');
-            s.stepNothing();
-            //s.addToList(stepBuilder(graph, 'grey', {}).baseString, true);
+            s.addToList(stepBuilder(graph, 'grey', {}).baseString, true);
 
             this.steps = steps;
         }
