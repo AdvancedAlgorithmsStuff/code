@@ -63,7 +63,21 @@ import Vue from 'vue'
 import { PlaybackChapter } from '~/components/ChapterPlaybackControls.vue';
 export default Vue.extend({
     data: (): {itemListRaw: ItemRaw[], errorMsg: string | false, steps: string[], chapters: PlaybackChapter[], smart: string} => ({
-        itemListRaw: [{origin: "s", destination: "t", capacity: "10"}],
+        itemListRaw: [
+            {origin: "s", destination: "2", capacity: "10"},
+            {origin: "s", destination: "3", capacity: "10"},
+
+            {origin: "2", destination: "3", capacity: "2"},
+            {origin: "2", destination: "5", capacity: "8"},
+            {origin: "2", destination: "4", capacity: "4"},
+
+            {origin: "3", destination: "5", capacity: "9"},
+
+            {origin: "4", destination: "t", capacity: "10"},
+
+            {origin: "5", destination: "4", capacity: "6"},
+            {origin: "5", destination: "t", capacity: "10"},
+        ],
         errorMsg: false,
         steps: [],
         chapters: [],
@@ -132,7 +146,7 @@ export default Vue.extend({
             }
 
             let base = stepBuilder(graph, 'GREY', {middle: 'gm', rankdir: 'LR'});
-            let residual = stepBuilder(residualGraph, 'RED', {middle: 'rm'});
+            let residual = stepBuilder(residualGraph, 'RED', {middle: 'rm', ignoreZero: true, prefix: 'm'});
             let flow = stepBuilder(flowGraph, 'green', {middle: 'fm'});
             let s = base;
             s.updateTitle('Default graph');
@@ -160,7 +174,8 @@ export default Vue.extend({
                     s.setVar('_q', s.arrayToList(q));
                     s.addToList(s.createArrow('_q', '_top', {}), true)
                     s.popList();
-                    for (let item of nodeNames) { 
+                    for (let item of nodeNames) {
+                        if (!graph[`${nName}-${item}`]) continue
                         s.createVar('_item', 'Item', item);
                         s.addToList(s.createArrow(nName, item, {label: 'Searching'}));
                         if (residualGraph[`${nName}-${item}`]) {
