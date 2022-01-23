@@ -1,0 +1,1 @@
+__NUXT_JSONP__("/algorithms/SequenceAlignment", {data:[{}],fetch:{},mutations:void 0});
