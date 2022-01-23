@@ -403,7 +403,8 @@ export default Vue.extend({
                         p1++;
                     } else {
                         l[i] = n2;
-                        inv += ic;
+                        if (n2 != n1)
+                            inv += ic;
                         p2++;
                     }
                     i++;

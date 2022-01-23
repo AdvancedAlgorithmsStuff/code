@@ -25,7 +25,9 @@
             </tr>
         </table>
         <button @click="addItem">Add Item</button>
-        <button @click="removeItem">Remove Item</button>
+        <button @click="removeItem">Remove Item</button><br>
+        
+        <input v-model="smart"><button @click="smartInsert">Insert</button>
         <transition name="fade">
             <div v-if="this.errorMsg">
                 {{this.errorMsg}}
@@ -60,12 +62,19 @@ import Vue from 'vue'
 
 import {stepBuilderBuilder} from '../../lib/GraphTools';
 export default Vue.extend({
-    data: (): {itemListRaw: ItemRaw[], errorMsg: string | false, steps: string[]} => ({
+    data: (): {itemListRaw: ItemRaw[], errorMsg: string | false, steps: string[], smart: string} => ({
         itemListRaw: [],
         errorMsg: false,
         steps: [],
+        smart: '',
     }),
     methods: {
+        smartInsert() {
+            let t = this.smart.split(',');
+            if (t.length != 3) return;
+            this.itemListRaw.push({origin: t[0], destination: t[1], capacity: t[2]});
+            this.smart = "";
+        },
         async renderDiagramStep(step: number) {
             if (this.steps[step]) {
                 await (this as any).$renderDiagram(this.steps[step], {

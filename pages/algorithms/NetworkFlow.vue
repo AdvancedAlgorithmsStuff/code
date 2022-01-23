@@ -26,7 +26,9 @@
             </tr>
         </table>
         <button @click="addItem">Add Item</button>
-        <button @click="removeItem">Remove Item</button>
+        <button @click="removeItem">Remove Item</button><br/>
+
+        <input v-model="smart"><button @click="smartInsert">Insert</button>
 
         <transition name="fade">
             <div v-if="this.errorMsg">
@@ -60,11 +62,12 @@ import {StringIndexed, stepBuilderBuilder} from '../../lib/GraphTools';
 import Vue from 'vue'
 import { PlaybackChapter } from '~/components/ChapterPlaybackControls.vue';
 export default Vue.extend({
-    data: (): {itemListRaw: ItemRaw[], errorMsg: string | false, steps: string[], chapters: PlaybackChapter[]} => ({
+    data: (): {itemListRaw: ItemRaw[], errorMsg: string | false, steps: string[], chapters: PlaybackChapter[], smart: string} => ({
         itemListRaw: [{origin: "s", destination: "t", capacity: "10"}],
         errorMsg: false,
         steps: [],
         chapters: [],
+        smart: '',
     }),
     mounted () {
         this.$nextTick(() => {
@@ -128,7 +131,7 @@ export default Vue.extend({
                 graph[`${item.origin}-${item.destination}`] = item.capacity;
             }
 
-            let base = stepBuilder(graph, 'GREY', {middle: 'gm'});
+            let base = stepBuilder(graph, 'GREY', {middle: 'gm', rankdir: 'LR'});
             let residual = stepBuilder(residualGraph, 'RED', {middle: 'rm'});
             let flow = stepBuilder(flowGraph, 'green', {middle: 'fm'});
             let s = base;
@@ -217,7 +220,7 @@ export default Vue.extend({
              		// Find minimum residual capacity of the edges 
              		// along the path filled by BFS. Or we can say 
              		// find the maximum flow through the path found. 
-             		let bottleneck = Number.MAX_VALUE; 
+             		let bottleneck = Number.POSITIVE_INFINITY; 
                     s.createVar('_bt', 'Bottleneck', Number.MAX_VALUE);
                     s.stepAction('Update residual graph');
              		for (v='t'; v!='s'; v=parent[v]) { 
@@ -335,6 +338,12 @@ export default Vue.extend({
 
             this.steps = steps;
             this.chapters = chapters;
+        },
+        smartInsert() {
+            let t = this.smart.split(',');
+            if (t.length != 3) return;
+            this.itemListRaw.push({origin: t[0], destination: t[1], capacity: t[2]});
+            this.smart = "";
         }
     },
     computed: {
