@@ -397,14 +397,13 @@ export default Vue.extend({
                     } else if (n2 == null) {
                         l[i] = n1;
                         p1++;
-                    } else if (n2 > n1) {
+                    } else if (n2 >= n1) {
                         l[i] = n1;
                         ic--;
                         p1++;
                     } else {
                         l[i] = n2;
-                        if (n2 != n1)
-                            inv += ic;
+                        inv += ic;
                         p2++;
                     }
                     i++;
