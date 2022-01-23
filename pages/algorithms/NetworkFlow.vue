@@ -33,7 +33,7 @@
                 {{this.errorMsg}}
             </div>
             <div v-else>
-                <PlaybackControls :max="this.steps.length - 1" @playbackProgress="this.renderDiagramStep" />
+                <ChapterPlaybackControls :chapters="this.chapters" @playbackProgress="this.renderDiagramStep" />
                 <div ref="diagram" />
             </div>
         </transition>
@@ -58,11 +58,13 @@ interface Item {
 import {StringIndexed, stepBuilderBuilder} from '../../lib/GraphTools';
 
 import Vue from 'vue'
+import { PlaybackChapter } from '~/components/ChapterPlaybackControls.vue';
 export default Vue.extend({
-    data: (): {itemListRaw: ItemRaw[], errorMsg: string | false, steps: string[]} => ({
+    data: (): {itemListRaw: ItemRaw[], errorMsg: string | false, steps: string[], chapters: PlaybackChapter[]} => ({
         itemListRaw: [{origin: "s", destination: "t", capacity: "10"}],
         errorMsg: false,
         steps: [],
+        chapters: [],
     }),
     mounted () {
         this.$nextTick(() => {
@@ -110,6 +112,9 @@ export default Vue.extend({
             let steps: string[] = [];
 
             let stepBuilder = stepBuilderBuilder(steps, nodeNames);
+
+
+            let chapters: PlaybackChapter[] = [{name: "Initial", steps: 1}]
 
             // Create a residual graph and fill the residual graph 
             // with given capacities in the original graph as 
@@ -186,6 +191,7 @@ export default Vue.extend({
 
                 s.createVar('_b', 'Search reached \\"t\\"', visited.has('t'));
 
+                chapters.push({name: 'Search', steps: steps.length - chapters.map(a=> a.steps).reduce((a,b)=>a+b)})
                 return [visited.has('t'), parent];
             }
 
@@ -263,7 +269,7 @@ export default Vue.extend({
                         s.addToList(s.createArrow('_bt', '_bt', {label: 'min'}));
                         residual.addMiddle(`${u}_${v}`)
                         s.addToList(s.createArrow(`rm_${u}_${v}`, '_bt', {label: 'min'}), true);
-                        residual.removeMiddle(`${v}_${u}`)
+                        residual.removeMiddle(`${u}_${v}`)
 
              			bottleneck = Math.min(bottleneck, residualGraph[`${u}-${v}`]); 	// find bottleneck, edge with minimum residual capacity across the edges of the path
 
@@ -303,6 +309,9 @@ export default Vue.extend({
                     max_flow += bottleneck;
                     s.setVar('_mxFlow', max_flow);
                     
+
+                    
+                    chapters.push({name: 'Ford Fulkerson', steps: steps.length - chapters.map(a=> a.steps).reduce((a,b)=>a+b) });
                     [b, parent] = search();
                     
                     s.updateTitle('Current step: Ford Fulkerson');
@@ -312,15 +321,20 @@ export default Vue.extend({
                 return max_flow;
             }
 
-            fordFulkerson();
+            let maxF = fordFulkerson();
 
             //s = stepBuilder(flowGraph, 'green', {});
+            s.dropVars();
+            s.createVar('_mx', 'Max Flow', maxF);
             s.removeLinkGraph('residual');
             s.updateTitle('Result');
             s.stepNothing();
+            chapters.push({name: 'Result', steps: 1 });
+            console.log(chapters);
             //s.addToList(stepBuilder(graph, 'grey', {}).baseString, true);
 
             this.steps = steps;
+            this.chapters = chapters;
         }
     },
     computed: {
