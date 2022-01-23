@@ -26,14 +26,16 @@
             </tr>
         </table>
         <button @click="addItem">Add Item</button>
-        <button @click="removeItem">Remove Item</button>
+        <button @click="removeItem">Remove Item</button><br/>
+
+        <input v-model="smart"><button @click="smartInsert">Insert</button>
 
         <transition name="fade">
             <div v-if="this.errorMsg">
                 {{this.errorMsg}}
             </div>
             <div v-else>
-                <PlaybackControls :max="this.steps.length - 1" @playbackProgress="this.renderDiagramStep" />
+                <ChapterPlaybackControls :chapters="this.chapters" @playbackProgress="this.renderDiagramStep" />
                 <div ref="diagram" />
             </div>
         </transition>
@@ -58,11 +60,14 @@ interface Item {
 import {StringIndexed, stepBuilderBuilder} from '../../lib/GraphTools';
 
 import Vue from 'vue'
+import { PlaybackChapter } from '~/components/ChapterPlaybackControls.vue';
 export default Vue.extend({
-    data: (): {itemListRaw: ItemRaw[], errorMsg: string | false, steps: string[]} => ({
+    data: (): {itemListRaw: ItemRaw[], errorMsg: string | false, steps: string[], chapters: PlaybackChapter[], smart: string} => ({
         itemListRaw: [{origin: "s", destination: "t", capacity: "10"}],
         errorMsg: false,
         steps: [],
+        chapters: [],
+        smart: '',
     }),
     mounted () {
         this.$nextTick(() => {
@@ -111,6 +116,9 @@ export default Vue.extend({
 
             let stepBuilder = stepBuilderBuilder(steps, nodeNames);
 
+
+            let chapters: PlaybackChapter[] = [{name: "Initial", steps: 1}]
+
             // Create a residual graph and fill the residual graph 
             // with given capacities in the original graph as 
             // residual capacities in residual graph 
@@ -123,7 +131,7 @@ export default Vue.extend({
                 graph[`${item.origin}-${item.destination}`] = item.capacity;
             }
 
-            let base = stepBuilder(graph, 'GREY', {middle: 'gm'});
+            let base = stepBuilder(graph, 'GREY', {middle: 'gm', rankdir: 'LR'});
             let residual = stepBuilder(residualGraph, 'RED', {middle: 'rm'});
             let flow = stepBuilder(flowGraph, 'green', {middle: 'fm'});
             let s = base;
@@ -186,6 +194,7 @@ export default Vue.extend({
 
                 s.createVar('_b', 'Search reached \\"t\\"', visited.has('t'));
 
+                chapters.push({name: 'Search', steps: steps.length - chapters.map(a=> a.steps).reduce((a,b)=>a+b)})
                 return [visited.has('t'), parent];
             }
 
@@ -211,7 +220,7 @@ export default Vue.extend({
              		// Find minimum residual capacity of the edges 
              		// along the path filled by BFS. Or we can say 
              		// find the maximum flow through the path found. 
-             		let bottleneck = Number.MAX_VALUE; 
+             		let bottleneck = Number.POSITIVE_INFINITY; 
                     s.createVar('_bt', 'Bottleneck', Number.MAX_VALUE);
                     s.stepAction('Update residual graph');
              		for (v='t'; v!='s'; v=parent[v]) { 
@@ -263,7 +272,7 @@ export default Vue.extend({
                         s.addToList(s.createArrow('_bt', '_bt', {label: 'min'}));
                         residual.addMiddle(`${u}_${v}`)
                         s.addToList(s.createArrow(`rm_${u}_${v}`, '_bt', {label: 'min'}), true);
-                        residual.removeMiddle(`${v}_${u}`)
+                        residual.removeMiddle(`${u}_${v}`)
 
              			bottleneck = Math.min(bottleneck, residualGraph[`${u}-${v}`]); 	// find bottleneck, edge with minimum residual capacity across the edges of the path
 
@@ -303,6 +312,9 @@ export default Vue.extend({
                     max_flow += bottleneck;
                     s.setVar('_mxFlow', max_flow);
                     
+
+                    
+                    chapters.push({name: 'Ford Fulkerson', steps: steps.length - chapters.map(a=> a.steps).reduce((a,b)=>a+b) });
                     [b, parent] = search();
                     
                     s.updateTitle('Current step: Ford Fulkerson');
@@ -312,15 +324,26 @@ export default Vue.extend({
                 return max_flow;
             }
 
-            fordFulkerson();
+            let maxF = fordFulkerson();
 
             //s = stepBuilder(flowGraph, 'green', {});
+            s.dropVars();
+            s.createVar('_mx', 'Max Flow', maxF);
             s.removeLinkGraph('residual');
             s.updateTitle('Result');
             s.stepNothing();
+            chapters.push({name: 'Result', steps: 1 });
+            console.log(chapters);
             //s.addToList(stepBuilder(graph, 'grey', {}).baseString, true);
 
             this.steps = steps;
+            this.chapters = chapters;
+        },
+        smartInsert() {
+            let t = this.smart.split(',');
+            if (t.length != 3) return;
+            this.itemListRaw.push({origin: t[0], destination: t[1], capacity: t[2]});
+            this.smart = "";
         }
     },
     computed: {
