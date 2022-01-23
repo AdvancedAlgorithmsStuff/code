@@ -18,7 +18,8 @@ export default {
 
       { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
       { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: 'crossorigin' },
-      { href: 'https://fonts.googleapis.com/css2?family=DM+Sans&display=swap', rel: 'stylesheet' }
+      { href: 'https://fonts.googleapis.com/css2?family=DM+Sans&display=swap', rel: 'stylesheet' },
+      { href: 'https://fonts.googleapis.com/css2?family=DM+Mono&display=swap', rel: 'stylesheet' }
     ],
     script: [
       { src: 'https://cdnjs.cloudflare.com/ajax/libs/viz.js/2.1.2/viz.js', integrity: "sha512-vnRdmX8ZxbU+IhA2gLhZqXkX1neJISG10xy0iP0WauuClu3AIMknxyDjYHEpEhi8fTZPyOCWgqUCnEafDB/jVQ==", crossorigin: 'anonymous', referrerpolicy: 'no-referrer' },
