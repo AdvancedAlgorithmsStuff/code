@@ -26,7 +26,6 @@
         </table>
         <button @click="addItem">Add Item</button>
         <button @click="removeItem">Remove Item</button>
-
         <transition name="fade">
             <div v-if="this.errorMsg">
                 {{this.errorMsg}}
@@ -62,33 +61,10 @@ import Vue from 'vue'
 import {stepBuilderBuilder} from '../../lib/GraphTools';
 export default Vue.extend({
     data: (): {itemListRaw: ItemRaw[], errorMsg: string | false, steps: string[]} => ({
-        itemListRaw: [
-            {origin: "s", destination: "2", capacity: "9"},
-            {origin: "s", destination: "7", capacity: "15"},
-            {origin: "s", destination: "6", capacity: "14"},
-            {origin: "2", destination: "3", capacity: "24"},
-            {origin: "3", destination: "t", capacity: "19"},
-            {origin: "6", destination: "3", capacity: "18"},
-            {origin: "6", destination: "5", capacity: "30"},
-            {origin: "6", destination: "7", capacity: "5"},
-            {origin: "7", destination: "t", capacity: "44"},
-            {origin: "7", destination: "5", capacity: "20"},
-            {origin: "5", destination: "t", capacity: "16"},
-            {origin: "5", destination: "4", capacity: "11"},
-            {origin: "4", destination: "t", capacity: "6"},
-            {origin: "4", destination: "3", capacity: "6"},
-            {origin: "3", destination: "5", capacity: "2"},
-        ],
+        itemListRaw: [],
         errorMsg: false,
         steps: [],
     }),
-    mounted () {
-        this.$nextTick(() => {
-            (this as any).itemListRaw = [...(this as any).itemListRaw];
-            (this as any).calculate();
-            (this as any).renderDiagramStep(this.steps.length - 1);
-        })
-    },
     methods: {
         async renderDiagramStep(step: number) {
             if (this.steps[step]) {
@@ -107,6 +83,8 @@ export default Vue.extend({
             this.itemListRaw.splice(-1)
         },
         async calculate() {
+
+            console.log("test");
 
             //Cleanup
             this.errorMsg = false;
@@ -182,7 +160,7 @@ export default Vue.extend({
                     }
                 }
                 let a = Array.from(options);
-                a.sort((a, b) => graph[`${a[0]}-${a[1]}`] - graph[`${b[0]}-${b[1]}`]);
+                a.sort((a, b) => (nodeValues[a[0]] + graph[`${a[0]}-${a[1]}`]) - (nodeValues[b[0]] + graph[`${b[0]}-${b[1]}`]));
 
                 s.setVar('_options', s.arrayToList(a.map(a => `${a[0]} to ${a[1]}`)));
                 s.stepNothing();
@@ -198,7 +176,9 @@ export default Vue.extend({
 
                     if (nodeValues[b[0]] + graph[`${b[0]}-${b[1]}`] <  nodeValues[b[1]]) {
                         nodeValues[b[1]] = nodeValues[b[0]] + graph[`${b[0]}-${b[1]}`]
+                        a.sort((a, b) => (nodeValues[a[0]] + graph[`${a[0]}-${a[1]}`]) - (nodeValues[b[0]] + graph[`${b[0]}-${b[1]}`]));
                         s.updateExtra(nodeValues);
+                        s.setVar('_options', s.arrayToList(a.map(a => `${a[0]} to ${a[1]}`)));
                         s.stepAction('Update value')
                     }
 
@@ -206,6 +186,7 @@ export default Vue.extend({
                         if (a.length == 0) {
                             s.stepAction('No Solution found');
                             this.steps = steps;
+                            this.renderDiagramStep(this.steps.length-1);
                             return;
                         } else {
                             s.stepAction('Continue checking');
@@ -274,6 +255,7 @@ export default Vue.extend({
             s.stepNothing();
 
             this.steps = steps;
+            this.renderDiagramStep(this.steps.length-1);
         }
     },
     computed: {
@@ -284,7 +266,8 @@ export default Vue.extend({
         }
     },
     watch: {
-        itemList() {this.calculate()}
+        itemList() {this.calculate()},
+        itemListRaw() {this.calculate()}
     }
 
 })
