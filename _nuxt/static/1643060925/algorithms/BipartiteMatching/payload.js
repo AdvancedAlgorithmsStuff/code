@@ -1,0 +1,1 @@
+__NUXT_JSONP__("/algorithms/BipartiteMatching", {data:[{}],fetch:{},mutations:void 0});
