@@ -3,7 +3,7 @@
         <table>
             <thead>
                 <tr>
-                    <th v-bind:colspan="threeD ? 4 : 3">Items</th>
+                    <th colspan="{{threeD ? 4 : 3}}">Items</th>
                 </tr>
                 <tr>
                     <th>Name</th>
@@ -449,4 +449,5 @@ export default Vue.extend({
         padding: 5px
     }
 </style>
+
 
