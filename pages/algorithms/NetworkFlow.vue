@@ -95,6 +95,8 @@ export default Vue.extend({
             this.calculate();
             this.renderDiagramStep(0);
           }, this.renderCanvas);
+          this.renderer.width = window.innerWidth - 10;
+          this.renderer.height = 300;
           this.renderer!.render();
         },
         renderCanvas() {
