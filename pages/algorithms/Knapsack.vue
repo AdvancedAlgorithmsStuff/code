@@ -6,47 +6,32 @@
                     <th colspan="2">Items</th>
                 </tr>
                 <tr>
+                    <th>Name</th>
                     <th>Value</th>
                     <th>Weight</th>
+                    <div v-if="threeD">
+                        Volume
+                    </div>
                 </tr>
             </thead>
             <tbody>
                 <tr v-for="(item, key) in this.itemListRaw" :key="key">
+                    <td>
+                        <input v-model="item[2]"/>
+                    </td>
                     <td>
                         <input type="number" v-model="item[0]"/>
                     </td>
                     <td>
                         <input type="number" v-model="item[1]"/>
                     </td>
+                    <td v-if="threeD">
+                        <input type="number" v-model="item[3]"/>
+                    </td>
                 </tr>
             </tbody>
         </table>
         <br/>
-        <table>
-            <thead>
-                <tr>
-                    <th colspan="3">Sorted items</th>
-                </tr>
-                <tr>
-                    <th>Item number</th>
-                    <th>Value</th>
-                    <th>Weight</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr v-for="(item, key) in this.itemList" :key="key">
-                    <td>
-                        {{key + 1}}
-                    </td>
-                    <td>
-                        {{item[0]}}
-                    </td>
-                    <td>
-                        {{item[1]}}
-                    </td>
-                </tr>
-            </tbody>
-        </table>
         
         <p>
             <button @click="this.addItem">Add Item</button>
@@ -60,27 +45,72 @@
             <input id="bottom-up" type="checkbox" v-model="bottUp">
         </p>
         <p>
+            <label for="bottom-up">
+                3d?
+            </label>
+            <input id="bottom-up" type="checkbox" v-model="threeD">
+        </p>
+        <p>
             <label for="max-w">
                 Max Weight
             </label>
             <input id="max-w" type="number" v-model="maxWeightRaw">
         </p>
+        <p v-if="threeD">
+            <label for="max-w">
+                Max Volume
+            </label>
+            <input id="max-w" type="number" v-model="maxVolumeRaw">
+        </p>
 
         <br>
         
-        <transition name="fade">
-            <div v-if="this.chapter1Length > 0">
-                <ChapterPlaybackControls
-                    @playbackProgress="renderCurrentStep"
-                    :chapters="[{ name: 'Building Matrix', steps: this.chapter1Length }, { name: 'Finding Optimal Solution', steps: this.steps.length - this.chapter1Length - 1 }]" />
-                <br><br>
-                
-                <div ref="diagram" />
-            </div>
-            <div v-else>
-                <pre>Please enter some values!</pre>
-            </div>
-        </transition>
+        <div v-if="threeD">
+            <table class="a" v-for="(item, itemNumber) in this.m3" v-bind:key="`${itemNumber}t`">
+                <thead>
+                    <tr>
+                        <th>
+                            <table>
+                                <tr>
+                                    <!--td>{{(((this.itemList && this.itemList[itemNumber] && this.itemList[itemNumber][2]) ? this.itemList[itemNumber][2] : ''))}}</td-->
+                                    <td>Volume</td>
+                                </tr>
+                                <tr>
+                                    <td>Weight</td>
+                                    <td>/</td>
+                                </tr>
+                            </table>
+                        </th>
+                        <th v-for="(_, i) in item[0]" v-bind:key="i">
+                            {{i}}
+                        </th>
+                    </tr>
+                </thead>
+                <tr v-for="(xl, i) in item" v-bind:key="`l${i}`">
+                    <td>
+                        {{i}}
+                    </td>
+                    <td v-for="(x, a) in xl" v-bind:key="`c${i}${a}`">
+                        {{i == 0 ? 0 : a == 0 ? 0 : x}}
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <div v-else>
+            <transition name="fade">
+                <div v-if="this.chapter1Length > 0">
+                    <ChapterPlaybackControls
+                        @playbackProgress="renderCurrentStep"
+                        :chapters="[{ name: 'Building Matrix', steps: this.chapter1Length }, { name: 'Finding Optimal Solution', steps: this.steps.length - this.chapter1Length - 1 }]" />
+                    <br><br>
+                    
+                    <div ref="diagram" />
+                </div>
+                <div v-else>
+                    <pre>Please enter some values!</pre>
+                </div>
+            </transition>
+        </div>
     </div>
 </template>
 
@@ -90,11 +120,14 @@ import Vue from 'vue'
 export default Vue.extend({
     name: 'KnapsackPage',
     
-    data: (): {itemListRaw: string[][], bottUp: number, m: number[][], maxWeightRaw: number, steps: string[], chapter1Length: number} => ({
+    data: (): {itemListRaw: string[][], bottUp: number, m: number[][], maxWeightRaw: number, steps: string[], chapter1Length: number, threeD: number, maxVolumeRaw: number, m3: (null | number)[][][]} => ({
         itemListRaw: [["5","1"],["10","1"],["12","5"],["12","6"]],
         bottUp:1,
+        threeD:0,
         maxWeightRaw: 3,
+        maxVolumeRaw: 3,
         m: [],
+        m3: [],
 
         steps: [],
         chapter1Length: 0
@@ -102,24 +135,31 @@ export default Vue.extend({
 
     watch: {
         itemList() {this.calculate(); },
+        itemListRaw() {this.calculate(); },
+        maxWeightRaw() { this.calculate(); },
         maxWeight() { this.calculate(); },
+        maxVolumeRaw() { this.calculate(); },
+        maxVolume() { this.calculate(); },
         bottUp() { this.calculate(); }
     },
     
     computed: {
         itemList() {
-            let s = this.itemListRaw.map(a => a.map(a => Number(a)));
-            s.sort((a, b) => a[1] - b[1]);
+            let s: [number, number, string, number][] = this.itemListRaw.map(a => [Number(a[0]), Number(a[1]), a[2], Number(a[3])]);
+            //s.sort((a, b) => a[1] - b[1]);
             return s;
         },
         maxWeight() {
             return Number(this.maxWeightRaw);
         },
+        maxVolume() {
+            return Number(this.maxVolumeRaw);
+        },
     },
 
     methods: {
         addItem() {
-            this.itemListRaw.push(["",""]);
+            this.itemListRaw.push(["","", "", ""]);
         },
         removeItem() {
             this.itemListRaw.splice(-1);
@@ -135,7 +175,28 @@ export default Vue.extend({
 
         },
 
+        calculate3D() {
+            let m = Array(this.itemList.length).fill(0).map(a => Array(this.maxWeight + 1).fill(0).map(a => Array(this.maxVolume + 1).fill(null)));
+
+            let opt = (k: number, w: number, v: number) => {
+                if (k == - 1) return 0;
+                if (v <= 0 || w <= 0) return 0;
+                if (m[k][w][v] != null) return m[k][w][v];
+                if (w < this.itemList[k][1] && v < this.itemList[k][3]) {
+                    m[k][w][v] =  opt(k-1, w, v)
+                    return m[k][w][v];
+                }
+                m[k][w][v] = Math.max(opt(k-1, w, v), this.itemList[k][0] + opt(k-1, w-this.itemList[k][1], v-this.itemList[k][3]))
+                return m[k][w][v];
+            }
+
+            opt(this.itemList.length - 1, this.maxWeight, this.maxVolume);
+
+            this.m3 = m;
+        },
+
         async calculate () {
+            if (this.threeD) return this.calculate3D();
             let m = Array(this.itemList.length + 1).fill(0).map(_ => Array(this.maxWeight + 1).fill(0));
 
             for (let i = 0; i < this.maxWeightRaw + 1; i++) {
@@ -148,16 +209,20 @@ export default Vue.extend({
                 let diagString = 'node [shape=record]\n table [label="';
 
                 diagString += '{'
-                for (let i = 0; i < this.itemList.length + 1; i++) {
-                    diagString += i > 0 ? `|Nr. Item: ${i}` :` / `;
+                for (let i = 0; i < this.itemList.length + 2; i++) {
+                    diagString += i == 0 ? 'Weight' : i > 1 ? `| ${i - 1} Items (${this.itemList[i - 2][2]})` :`| 0 Items `;
                 }
                 diagString += '}'
 
                 for (let x = 0; x < this.maxWeight + 1; x++) {
                     diagString += '|{';
-                    for (let y = 0; y < this.itemList.length + 1; y++) {
-                        let v = m[y][x];
-                        diagString += y > 0 ? `|<t${x}${y}>${v}` : `<t${x}${y}>${v}`;
+                    for (let y = 0; y < this.itemList.length + 2; y++) {
+                        if (y == 0){
+                            diagString += y > 0 ? `|${x}` : `${x}`;
+                            continue;
+                        }
+                        let v = m[y - 1][x];
+                        diagString += y > 0 ? `|<t${x}${y - 1}>${v}` : `<t${x}${y - 1}>${v}`;
                     }
                     diagString+= '}';
                 }
@@ -291,7 +356,7 @@ export default Vue.extend({
 
             let itemsResult: number[] = [];
 
-            s.updateTemp(createVar('result', 'Result Items', `{${itemsResult.map(a => `Item: ${a + 1}`)}}`));
+            s.updateTemp(createVar('result', 'Result Items', `{${itemsResult.map(a => `Item: ${this.itemList[a][2]}`)}}`));
             s.updateTemp(createVar('li', 'Look Index', lookIndex ))
             s.updateTemp(createVar('lw', 'Look Weight', lookWeight ))
             s.stepNoMsg();
@@ -309,14 +374,14 @@ export default Vue.extend({
                 } else {
                     itemsResult.push(lookIndex - 1);
                     s.resetTemp();
-                    s.updateTemp(createVar('result', 'Result Items', `{${itemsResult.map(a => `Item: ${a + 1}`)}}`));
+                    s.updateTemp(createVar('result', 'Result Items', `{${itemsResult.map(a => `Item: ${this.itemList[a][2]}`)}}`));
                     s.updateTemp(createVar('li', 'Look Index', lookIndex ))
                     s.updateTemp(createVar('lw', 'Look Weight', lookWeight ))
                     s.stepNoT('li', 'result', "Get the current item add it to the result list");
 
                     s = getDiagString(lookIndex-1); 
                     lookWeight = lookWeight - this.itemList[lookIndex - 1][1];
-                    s.updateTemp(createVar('result', 'Result Items', `{${itemsResult.map(a => `Item: ${a + 1}`)}}`));
+                    s.updateTemp(createVar('result', 'Result Items', `{${itemsResult.map(a => `Item: ${this.itemList[a][2]}`)}}`));
                     s.updateTemp(createVar('li', 'Look Index', lookIndex ))
                     s.updateTemp(createVar('lw', 'Look Weight', lookWeight ))
                     s.stepNoT('item:w', 'lw', "Subtract");
@@ -324,13 +389,13 @@ export default Vue.extend({
                 }
                 s.resetTemp();
                 lookIndex = lookIndex - 1;
-                s.updateTemp(createVar('result', 'Result Items', `{${itemsResult.map(a => `Item: ${a + 1}`)}}`));
+                s.updateTemp(createVar('result', 'Result Items', `{${itemsResult.map(a => `Item: ${this.itemList[a][2]}`)}}`));
                 s.updateTemp(createVar('li', 'Look Index', lookIndex ))
                 s.updateTemp(createVar('lw', 'Look Weight', lookWeight ))
                 s.stepNoT('li', 'li', "-1");
             }
 
-            steps.push(`node [shape=record]\n${createVar('a', 'Result Items', `{${itemsResult.map(a => `Item: ${a + 1}`)}}`)}\n${createVar('b', 'Max Value', m[this.itemList.length][this.maxWeight])}`)
+            steps.push(`node [shape=record]\n${createVar('a', 'Result Items', `{${itemsResult.map(a => `Item: ${this.itemList[a][2]}`)}}`)}\n${createVar('b', 'Max Value', m[this.itemList.length][this.maxWeight])}`)
             //steps.push(createVar('a', 'Result Value', `{${itemsResult.map(a => `Item: ${a}`)}}`))
 
             this.steps = steps;
@@ -352,6 +417,10 @@ export default Vue.extend({
     }
     td {
         border: 1px solid black;
+    }
+    .a td {
+        border: 1px solid black;
+        padding: 5px
     }
 </style>
 

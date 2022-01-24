@@ -78,12 +78,22 @@ export default class CanvasRenderer {
    * @param y The top-most y-position of the node. (Top-left origin point of the node.)
    * @param radius The radius, in pixels. (default is 20)
    */
-  public drawNode(text: string, x: number, y: number, radius: number = 20) {
-    this.drawText(text, x + radius, y + radius, TextOrigin.CENTER);
-
+  public drawNode(text: string, x: number, y: number, {radius = 20, fillInside}: {radius?: number, fillInside?: boolean} = {}) {
+    if (fillInside) {
+      //TODO: Improve this
+      let c = this._ctx.fillStyle;
+      this._ctx.fillStyle = "white";
+      this._ctx.beginPath();
+      this._ctx.ellipse(x + radius, y + radius, radius, radius, 0, 0, Math.PI * 2);
+      this._ctx.fill();
+      this._ctx.fillStyle = c;
+    }
+    
     this._ctx.beginPath();
     this._ctx.arc(x + radius, y + radius, radius, 0, Math.PI * 2);
     this._ctx.stroke();
+    
+    this.drawText(text, x + radius, y + radius, TextOrigin.CENTER);
   }
 
   public joinNodes(

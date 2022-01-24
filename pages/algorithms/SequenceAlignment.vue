@@ -33,7 +33,7 @@
         <p class="monospace">{{ renderer.word }}</p>
       </div>
       <br>
-      <div ref="diagram" id="diagram" />
+      <div ref="diagram" />
     </center>
 
   </div>

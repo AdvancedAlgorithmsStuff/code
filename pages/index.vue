@@ -32,6 +32,7 @@
         <td>
           <ul>
             <li><nuxt-link to="/algorithms/NetworkFlow">Network Flow</nuxt-link></li>
+            <li><nuxt-link to="/algorithms/BipartiteMatching">Bipartite Matching</nuxt-link></li>
           </ul>
         </td>
       </tr>

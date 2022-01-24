@@ -19,10 +19,10 @@ export default ({ app }, inject) => {
     
     let viz = new Viz();
     inject('renderDiagram', async (diagram, options) => {
-        const { parentElement, replaceContents } = options;
+        const { parentElement, replaceContents, engine } = options;
 
         try {
-            const element = await viz.renderSVGElement(`digraph { ${diagram} }`);
+            const element = await viz.renderSVGElement(`digraph { ${diagram} }`, {engine});
 
             if (parentElement) {
                 if (replaceContents) parentElement.innerHTML = '';
@@ -39,5 +39,6 @@ export default ({ app }, inject) => {
             return app.$renderText("Could not render diagram.\n" + ex, options);
         }
     });
+
 
 }

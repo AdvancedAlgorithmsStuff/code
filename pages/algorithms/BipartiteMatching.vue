@@ -9,9 +9,6 @@
                 <th>
                     Destination
                 </th>
-                <th>
-                    Capacity
-                </th>
             </tr>
             <tr v-for="(item, index) in this.itemListRaw" :key="index">
                 <td>
@@ -19,9 +16,6 @@
                 </td>
                 <td>
                     <input v-model="item.destination">
-                </td>
-                <td>
-                    <input v-model="item.capacity">
                 </td>
             </tr>
         </table>
@@ -47,7 +41,7 @@
 <script lang="ts">
 
 
-import {StringIndexed, stepBuilderBuilder} from '../../lib/GraphTools';
+import {StringIndexed, stepBuilderBuilder, ItemListToStringIndexed, ItemListToStringIndexedNumber} from '../../lib/GraphTools';
 import {Item, ItemRaw, fordSolver} from '../../lib/Fordflukerson';
 import {GraphRender} from '../../lib/GraphRenderer';
 
@@ -55,67 +49,32 @@ import Vue from 'vue'
 import { PlaybackChapter } from '~/components/ChapterPlaybackControls.vue';
 
 export default Vue.extend({
-    data: (): {itemListRaw: ItemRaw[], errorMsg: string | false, steps: string[], chapters: PlaybackChapter[], smart: string, renderer?: GraphRender, pos: StringIndexed<[number, number]>} => ({
-        itemListRaw: [
-            {origin: "s", destination: "2", capacity: "10"},
-            {origin: "s", destination: "3", capacity: "10"},
-
-            {origin: "2", destination: "3", capacity: "2"},
-            {origin: "2", destination: "5", capacity: "8"},
-            {origin: "2", destination: "4", capacity: "4"},
-
-            {origin: "3", destination: "5", capacity: "9"},
-
-            {origin: "4", destination: "t", capacity: "10"},
-
-            {origin: "5", destination: "4", capacity: "6"},
-            {origin: "5", destination: "t", capacity: "10"},
-        ],
+    data: (): {itemListRaw: ItemRaw[], errorMsg: string | false, steps: string[], chapters: PlaybackChapter[], smart: string} => ({
+        itemListRaw: [],
         errorMsg: false,
         steps: [],
         chapters: [],
         smart: '',
-
-        renderer: undefined,
-        pos: {},
     }),
     mounted () {
         this.$nextTick(() => {
             (this as any).itemListRaw = [...(this as any).itemListRaw];
             (this as any).calculate();
             (this as any).renderDiagramStep(this.steps.length - 1);
-            this.createRender();
         })
     },
     methods: {
-        createRender () {
-          const canvas = document.createElement('canvas');
-          this.renderer = new GraphRender(canvas, this.nodeNames, (pos) => {
-            this.pos = pos;
-            this.calculate();
-            this.renderDiagramStep(0);
-          }, this.renderCanvas);
-          this.renderer!.render();
-        },
-        renderCanvas() {
-          // Render canvas on screen.
-          (this as any).$renderEmpty(this.$refs.canvas);
-          (this.$refs.canvas! as HTMLElement).appendChild(this.renderer!.ctx.canvas);
-        },
         async renderDiagramStep(step: number) {
-            if (this.steps[step]) {
-                console.log(this.steps[step])
-                console.log(this.pos)
-                console.log(this.pos['A'])
+            if (this.steps[step])
+            console.log(this.steps[step]);
                 await (this as any).$renderDiagram(this.steps[step], {
                     parentElement: this.$refs.diagram,
                     replaceContents: true,
                     engine: 'neato'
                 });
-            }
         },
         addItem() {
-            this.itemListRaw.push({origin: '', destination: '', capacity: '0'});
+            this.itemListRaw.push({origin: '', destination: '', capacity: 'Infinity'});
         },
         removeItem() {
             this.itemListRaw.splice(-1)
@@ -128,23 +87,94 @@ export default Vue.extend({
             //Code
             let nodeNames = this.nodeNames;
 
-            if (!nodeNames.includes('t') || !nodeNames.includes('s')) {
+            let stColS: Set<string> = new Set();
+            let ndColS: Set<string> = new Set();
+            for (let i of this.itemList) {
+                stColS.add(i.origin);
+                ndColS.add(i.destination);
+            }
+            let stCol: string[] = Array.from(stColS);
+            let ndCol: string[] = Array.from(ndColS);
+
+            for (let i of stCol) {
+                if (ndCol.includes(i)) {
+                    this.errorMsg = 'Items in the 1st column can not be in the 2nd';
+                    return;
+                }
+            }
+
+            /*if (!nodeNames.includes('t') || !nodeNames.includes('s')) {
                 this.errorMsg = 'A s and t node are needed';
                 return;
-            }
+            }*/
 
             let steps: string[] = [];
 
             let stepBuilder = stepBuilderBuilder(steps, nodeNames);
 
-            let obj: StringIndexed<[number, number]> = {}; 
-            Object.keys(this.pos).forEach(a => obj[a] = [this.pos[a][0] / 40, -this.pos[a][1] / 40] );
+            let chapters = [{name: "Building the graph", steps: 2 }, {name: "Initial", steps: 1}]
 
-            let [sp, chap] = fordSolver(obj, this.itemList, stepBuilder, nodeNames, [{name: "Initial", steps: 1}], steps);
+            let scaled: StringIndexed<[number, number]> = {}
 
+            let sy = 0;
+            for (let i = 0; i < stCol.length; i++) {
+                scaled[stCol[i]] = [10, -(2 + i * 2)];
+                sy += -(2 + i * 2)
+            }
+            sy /= stCol.length
+            
+            let ty = 0;
+            for (let i = 0; i < ndCol.length; i++) {
+                scaled[ndCol[i]] = [15, -(2 + i * 2)];
+                ty += -(2 + i * 2)
+            }
+            ty /= ndCol.length;
+
+            let it2: Item<string>[] = this.itemList.map(a => {
+                return {origin: a.origin, destination: a.destination, capacity: ''}
+            }); 
+
+            let o = stepBuilder(ItemListToStringIndexed(it2), 'grey', {pos: scaled });
+            o.stepNothing();
+
+            let it = [...this.itemList];
+
+            for (let i of stCol) {
+                it.push({origin: 's', destination: i, capacity: 1});
+            }
+            for (let i of ndCol) {
+                it.push({origin: i, destination: 't', capacity: 1});
+            }
+
+            scaled['t'] = [20, ty];
+            scaled['s'] = [5, sy];
+
+            let nN = [...nodeNames, 's', 't']
+            stepBuilder = stepBuilderBuilder(steps, nN);
+
+            o = stepBuilder(ItemListToStringIndexedNumber(it), 'grey', {pos: scaled});
+            o.stepNothing();
+
+            let [sp, chap, _, f] = fordSolver(scaled, it, stepBuilder, nN, chapters, steps);
+
+            stepBuilder = stepBuilderBuilder(sp, nodeNames);
+
+            it = Object.keys(f).filter(a => !a.match(/((s-.*)|(.*-t))/)).map(a => {
+                let s = a.split('-');
+                return {origin: s[0], destination: s[1], capacity: f[a]}
+            }); 
+
+            o = stepBuilder(ItemListToStringIndexed(it), 'green', {pos: scaled});
+            o.stepNothing();
+
+            it2 = it.filter(a => a.capacity > 0).map(a => ({...a, capacity: '' })); 
+            o = stepBuilder(ItemListToStringIndexed(it2), 'green', {pos: scaled});
+            o.stepNothing();
+
+            
+            chap.push({name: 'Clean Up', steps: 2});
+            this.steps = sp;
             this.chapters = chap;
-            this.steps = sp
-
         },
         smartInsert() {
             let t = this.smart.split(',');
@@ -173,39 +203,10 @@ export default Vue.extend({
         }
     },
     watch: {
-        itemList() {
-            let nodeNamesS: Set<string> = new Set();
-
-            for (let conn of this.itemList) {
-                nodeNamesS.add(conn.origin);
-                nodeNamesS.add(conn.destination);
-            }
-
-            let a = Array.from(nodeNamesS);
-            a.sort();
-            
-            this.renderer?.updateNodes(a);
-            this.calculate()
-            },
+        itemList() {this.calculate()},
         itemListRaw() {
-
-            let nodeNamesS: Set<string> = new Set();
-
-            for (let conn of this.itemList) {
-                nodeNamesS.add(conn.origin);
-                nodeNamesS.add(conn.destination);
-            }
-
-            let a = Array.from(nodeNamesS);
-            a.sort();
-            
-            this.renderer?.updateNodes(a);
-
             this.calculate()
         },
-        pos() {
-            this.calculate();
-        }
     }
 
 })
